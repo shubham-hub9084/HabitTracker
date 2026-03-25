@@ -1,0 +1,43 @@
+:root {
+  /* Colors - Kinetic Sanctuary */
+  --primary: #5dc9ff;
+  --primary-container: #00bdfd;
+  --primary-dim: #00afea;
+  --secondary: #37b1fd;
+  --secondary-container: #006495;
+  --background: #0a0e14;
+  --surface: #0a0e14;
+  --surface-bright: #262c36;
+  --surface-container-low: #0f141a;
+  --surface-container: #151a21;
+  --surface-container-high: #1b2028;
+  --surface-container-highest: #20262f;
+  --on-surface: #f1f3fc;
+  --on-surface-variant: #a8abb3;
+  --outline: #72757d;
+  --outline-variant: rgba(114, 117, 125, 0.15); /* 15% opacity for "Ghost Border" */
+
+  /* Spacing Scale */
+  --spacing-1: 0.25rem;
+  --spacing-2: 0.5rem;
+  --spacing-3: 0.75rem;
+  --spacing-4: 1rem;
+  --spacing-6: 1.5rem;
+  --spacing-8: 2rem;
+  --spacing-12: 3rem;
+  --spacing-16: 4rem;
+
+  /* Typography */
+  --font-display: var(--font-manrope), sans-serif;
+  --font-body: var(--font-inter), sans-serif;
+
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* Glassmorphism Recipe */
+  --glass-bg: rgba(32, 38, 47, 0.6); /* surface_container_highest at 60% */
+  --glass-blur: 20px;
+}
