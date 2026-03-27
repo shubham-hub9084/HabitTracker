@@ -1,4 +1,17 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --color-destructive-foreground: var(--destructive-foreground);
+}
+
+:root {
+  --destructive-foreground: oklch(1 0 0);
+}
+
+.dark {
+  --destructive-foreground: oklch(1 0 0);
+}
 
 @theme {
   /* ─── V2 Palette ─── */
@@ -29,11 +42,43 @@
   /* Typography */
   --font-body:    'Inter', sans-serif;
   --font-display: 'Manrope', 'Inter', sans-serif;
+
+  /* Animations */
+  --animate-shimmer2: shimmer2 2s infinite linear;
+  @keyframes shimmer2 {
+    0% { background-position: 0% 0%; }
+    100% { background-position: -200% 0%; }
+  }
+
+  /* Breakpoints */
+  --breakpoint-xs: 400px;
 }
 
 /* ────────────────────────────────────────
    Base Styles
 ──────────────────────────────────────── */
+@layer components {
+  .shimmer-panel {
+    position: relative;
+    overflow: hidden;
+  }
+  .shimmer-panel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 200%;
+    background: linear-gradient(
+      110deg, 
+      transparent 45%, 
+      rgba(255, 255, 255, 0.03) 50%, 
+      transparent 55%
+    );
+    background-size: 50% 100%;
+    animation: shimmer2 8s ease-in-out infinite; /* Slower, smoother, and more relaxed */
+    pointer-events: none;
+    z-index: 1;
+  }
+}
 @layer base {
   body {
     background-color: var(--color-background);

@@ -2,11 +2,14 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, ChevronLeft, ChevronRight, Target, Flame, LayoutDashboard, History, Settings, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Target, Flame, LayoutDashboard } from 'lucide-react';
 import ConstellationBackground from '@/components/Dashboard/ConstellationBackground';
-import HabitCard               from '@/components/Dashboard/HabitCard';
-import Heatmap                 from '@/components/Dashboard/Heatmap';
-import PerformanceTrend        from '@/components/Dashboard/PerformanceTrend';
+import HabitCard from '@/components/Dashboard/HabitCard';
+import Heatmap from '@/components/Dashboard/Heatmap';
+import PerformanceTrend from '@/components/Dashboard/PerformanceTrend';
+import { BouncingDots } from '@/components/ui/bouncing-dots';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
 
 /* ─── Types ────────────────────────────── */
 export interface DayLog {
@@ -47,10 +50,10 @@ const fmtDate = (d: Date) =>
 /* ─── Animation Variants ────────────────── */
 const fadeInUp: any = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.5, ease: 'easeOut' } 
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: 'easeOut' }
   }
 };
 
@@ -60,36 +63,35 @@ const staggerContainer = {
 
 /* ─── Main Page ─────────────────────────── */
 export default function Home() {
-  const [habits, setHabits]         = useState<Habit[]>([]);
-  const [logs, setLogs]             = useState<DayLog[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [setupDone, setSetupDone]   = useState(false);
-  const [viewDate, setViewDate]     = useState(new Date());
-  const [menuOpen, setMenuOpen]     = useState(false);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [logs, setLogs] = useState<DayLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewDate, setViewDate] = useState<Date | null>(null);
+  const date = viewDate ? toISO(viewDate) : toISO(new Date()); // Fallback for initial calc if needed, but we'll use useEffect
+  const [mounted, setMounted] = useState(false);
 
-  const date = toISO(viewDate);
-
-  /* 1 – DB Setup */
   useEffect(() => {
-    fetch('/api/setup', { method: 'POST' })
-      .then(() => setSetupDone(true))
-      .catch(console.error);
+    setViewDate(new Date());
+    setMounted(true);
   }, []);
 
-  /* 2 – Load habits + logs */
+  /* 1 – Initialization */
   const refresh = useCallback(async () => {
     const [hRes, lRes] = await Promise.all([
       fetch(`/api/habits?date=${date}`),
       fetch('/api/logs?days=120'),
     ]);
     const { habits: h } = await hRes.json() as { habits: Habit[] };
-    const { logs: l }   = await lRes.json() as { logs: DayLog[] };
+    const { logs: l } = await lRes.json() as { logs: DayLog[] };
     setHabits(h ?? []);
     setLogs(l ?? []);
     setLoading(false);
   }, [date]);
 
-  useEffect(() => { if (setupDone) refresh(); }, [setupDone, refresh]);
+  useEffect(() => {
+    fetch('/api/setup', { method: 'POST' }).catch(console.error);
+    refresh();
+  }, [refresh]);
 
   /* 3 – Toggle habit */
   const toggle = async (id: number) => {
@@ -107,19 +109,30 @@ export default function Home() {
   };
 
   /* Derived */
-  const done    = habits.filter(h => h.completed).length;
-  const total   = habits.length;
-  const pct     = total > 0 ? Math.round((done / total) * 100) : 0;
-  const streak  = computeStreak(logs);
+  const done = habits.filter(h => h.completed).length;
+  const total = habits.length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const streak = computeStreak(logs);
 
-  const isToday   = toISO(viewDate) === toISO(new Date());
-  const prevDay   = () => { const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d); setLoading(true); };
-  const nextDay   = () => { if (!isToday) { const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d); setLoading(true); } };
+  const isToday = viewDate ? toISO(viewDate) === toISO(new Date()) : true;
+  const prevDay = () => { if (!viewDate) return; const d = new Date(viewDate); d.setDate(d.getDate() - 1); setViewDate(d); setLoading(true); };
+  const nextDay = () => { if (!viewDate || isToday) return; const d = new Date(viewDate); d.setDate(d.getDate() + 1); setViewDate(d); setLoading(true); };
+
+  if (!mounted || !viewDate) {
+    return (
+      <div className="min-h-screen text-slate-50 relative selection:bg-sky-500/30">
+        <ConstellationBackground />
+        <div className="flex items-center justify-center min-h-screen">
+          <BouncingDots message="Synchronizing Temporal Data" className="bg-sky-400" />
+        </div>
+      </div>
+    );
+  }
 
   /* Progress Ring Constants */
-  const radius        = 84;
+  const radius = 84;
   const circumference = 2 * Math.PI * radius;
-  const offset        = circumference - (pct / 100) * circumference;
+  const offset = circumference - (pct / 100) * circumference;
 
   /* ─── Render ─────────────────────────── */
   return (
@@ -127,87 +140,43 @@ export default function Home() {
       <ConstellationBackground />
 
       {/* ── Header ─────────────────────── */}
-      <header className="relative z-50 flex items-center justify-between px-6 py-6 max-w-5xl mx-auto">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-4 group cursor-pointer"
-          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        >
-          <div className="w-12 h-12 rounded-2xl bg-sky-500 flex items-center justify-center shadow-[0_8px_16px_-4px_rgba(56,189,248,0.5)] group-hover:scale-110 transition-transform duration-300">
-            <Target size={24} color="#fff" strokeWidth={2.5} />
-          </div>
-          <div>
-            <div className="text-xl font-black leading-tight flex items-baseline gap-1">
-              Shubham <span className="text-sky-400">Sahu</span>
-            </div>
-            <div className="text-[9px] uppercase tracking-[0.25em] font-black text-slate-500">
-              Professional Excellence
-            </div>
-          </div>
-        </motion.div>
-
+      <header className="relative z-50 flex items-center justify-end px-4 sm:px-6 py-4 sm:py-8 max-w-5xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-4"
+          className="flex items-center gap-3 sm:gap-4 group cursor-pointer"
+          onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         >
-           <button
-            onClick={() => setMenuOpen(o => !o)}
-            className="w-12 h-12 rounded-2xl glass-panel flex items-center justify-center text-slate-400 hover:text-white hover:border-sky-500/30 transition-all duration-300"
-          >
-            <Menu size={22} />
-          </button>
+          <div className="text-right flex flex-col items-end">
+            <div className="text-sm sm:text-base font-black leading-tight flex items-baseline justify-end gap-1">
+              Shubham <span className="text-sky-400">Sahu</span>
+            </div>
+            <div className="text-[7px] sm:text-[8px] uppercase tracking-[0.2em] sm:tracking-[0.25em] font-black text-slate-500">
+              Professional Excellence
+            </div>
+          </div>
+          
+          <Avatar className="size-10 sm:size-12 ring-2 ring-sky-500/10 cursor-pointer hover:ring-sky-500/30 transition-all shadow-[0_0_20px_rgba(56,189,248,0.1)] bg-slate-950/20 backdrop-blur-sm">
+            <AvatarImage src="/1766751500321.jpg" alt="Shubham Sahu" className="object-cover" />
+            <AvatarFallback className="bg-transparent text-sky-400 font-bold">SS</AvatarFallback>
+          </Avatar>
         </motion.div>
-
-        {/* Dropdown Menu */}
-        <AnimatePresence>
-          {menuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 5, scale: 0.95 }}
-              className="absolute top-20 right-6 w-56 glass-panel shadow-2xl p-2 z-[100]"
-            >
-              {[
-                { name: 'Dashboard', icon: LayoutDashboard },
-                { name: 'History',   icon: History },
-                { name: 'Settings',  icon: Settings },
-              ].map(item => (
-                <button
-                  key={item.name}
-                  onClick={() => setMenuOpen(false)}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all duration-200"
-                >
-                  <item.icon size={18} strokeWidth={2} />
-                  {item.name}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </header>
+
 
       {/* ── Dashboard Content ──────────── */}
       <main className="relative z-10 px-5 pb-24 max-w-2xl mx-auto">
-        
-        <motion.div 
-          initial="hidden" 
-          whileInView="visible" 
-          viewport={{ once: true }} 
+
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
           variants={staggerContainer}
-          className="space-y-6"
+          className="space-y-4 sm:space-y-5"
         >
           {/* Hero Section */}
-          <motion.div variants={fadeInUp} className="py-8">
-            <div className="flex items-center gap-2 text-sky-400 mb-2">
-              <LayoutDashboard size={18} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Main Console</span>
-            </div>
-            <h1 className="text-4xl sm:text-5xl font-black text-white leading-tight">Dashboard <span className="text-primary-gradient">Overview</span></h1>
-            <p className="text-slate-400 text-base mt-2 font-medium max-w-md leading-relaxed">
-              Elevate your daily potential through consistent micro-habits and performance tracking.
-            </p>
+          <motion.div variants={fadeInUp} className="py-4 sm:py-6">
+            <h1 className="text-3xl sm:text-5xl font-black text-white leading-tight">Dashboard <span className="text-primary-gradient">Overview</span></h1>
           </motion.div>
 
           {/* ── HABITS CARD ──────────── */}
@@ -258,10 +227,13 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {loading ? (
-                <div className="space-y-3">
-                  {[1,2,3].map(i => <div key={i} className="h-20 rounded-2xl bg-white/5 animate-pulse" />)}
+                <div className="py-20 flex flex-col items-center justify-center">
+                  <BouncingDots 
+                    message="Optimizing Neural Pathways" 
+                    className="bg-sky-400"
+                  />
                 </div>
               ) : habits.length === 0 ? (
                 <div className="py-12 text-center glass-panel border-dashed border-slate-800">
@@ -296,11 +268,11 @@ export default function Home() {
               <div className="relative w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center scale-90 sm:scale-100">
                 {/* Outer Glow */}
                 <div className="absolute inset-0 bg-sky-500/20 blur-3xl rounded-full opacity-60 group-hover:opacity-100 transition-opacity duration-1000" />
-                
+
                 <svg className="w-full h-full -rotate-90">
                   <circle cx="96" cy="96" r="70" className="sm:hidden" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="14" />
                   <circle cx="112" cy="112" r={radius} className="hidden sm:block" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="16" />
-                  
+
                   <motion.circle
                     cx="96" cy="96" r="70"
                     className="sm:hidden"
@@ -327,14 +299,14 @@ export default function Home() {
                   />
                   <defs>
                     <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%"   stopColor="#0ea5e9" />
+                      <stop offset="0%" stopColor="#0ea5e9" />
                       <stop offset="100%" stopColor="#818cf8" />
                     </linearGradient>
                   </defs>
                 </svg>
-                
+
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <motion.span 
+                  <motion.span
                     key={pct}
                     initial={{ opacity: 0, scale: 1.2 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -354,9 +326,9 @@ export default function Home() {
                     <span className="text-slate-500 font-bold text-xs sm:text-sm">/ {total} Habits</span>
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col items-end">
-                   <div className="flex items-center gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 mb-1.5">
                     <Flame size={14} className={streak > 0 ? 'text-orange-500' : 'text-slate-700'} />
                     <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest">Active Streak</span>
                   </div>
@@ -370,11 +342,11 @@ export default function Home() {
 
           {/* ── DATA VIZ ─────────────── */}
           <motion.div variants={fadeInUp}>
-            <Heatmap logs={logs} />
+            <Heatmap logs={logs} loading={loading} />
           </motion.div>
 
           <motion.div variants={fadeInUp} className="grid grid-cols-1 gap-6">
-            <PerformanceTrend logs={logs} />
+            <PerformanceTrend logs={logs} loading={loading} />
           </motion.div>
 
         </motion.div>

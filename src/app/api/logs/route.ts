@@ -11,9 +11,6 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const days = parseInt(searchParams.get('days') ?? '120', 10);
 
-  const total = await sql`SELECT COUNT(*) AS c FROM habits`;
-  const totalHabits = Number(total[0].c) || 1;
-
   const rows = await sql`
     SELECT
       log_date::text                         AS date,
@@ -21,7 +18,7 @@ export async function GET(req: Request) {
       COUNT(*)                               AS total,
       ROUND(
         COUNT(*) FILTER (WHERE completed)::numeric
-        / ${totalHabits} * 100
+        / NULLIF((SELECT COUNT(*) FROM habits), 0) * 100
       )                                      AS pct
     FROM habit_logs
     WHERE log_date >= CURRENT_DATE - ${days}::int
@@ -29,5 +26,5 @@ export async function GET(req: Request) {
     ORDER BY log_date;
   `;
 
-  return NextResponse.json({ days, totalHabits, logs: rows });
+  return NextResponse.json({ days, logs: rows });
 }

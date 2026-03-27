@@ -43,24 +43,22 @@ export default function HabitCard({ title, time, icon, accentColor, checked = fa
       layout
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ scale: 1.01, x: 2 }}
-      whileTap={{ scale: 0.98 }}
       className={`flex items-center justify-between p-4 sm:p-5 rounded-2xl border transition-all duration-300 cursor-pointer group glass-panel
         ${checked
           ? 'border-[rgba(56,189,248,0.4)] bg-[rgba(56,189,248,0.08)]'
           : 'border-white/5 hover:border-white/10'
         }`}
     >
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
         <div 
-          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all
+          className={`shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center transition-all
             ${checked ? 'bg-sky-500/20 text-sky-400' : 'bg-white/5 text-slate-400 group-hover:text-slate-200'}`}
         >
-          <IconComponent size={20} className="sm:w-6 sm:h-6" strokeWidth={1.5} />
+          <IconComponent size={18} className="sm:w-6 sm:size-6" strokeWidth={1.5} />
         </div>
-        <div>
-          <p className="font-bold text-sm sm:text-base text-white tracking-tight">{title}</p>
-          <p className="text-[10px] sm:text-xs font-semibold text-slate-500 mt-0.5">{time}</p>
+        <div className="overflow-hidden">
+          <p className="font-bold text-sm sm:text-base text-white tracking-tight truncate">{title}</p>
+          <p className="text-[9px] sm:text-xs font-semibold text-slate-500 mt-0.5 truncate">{time}</p>
         </div>
       </div>
 

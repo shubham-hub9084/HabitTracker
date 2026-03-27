@@ -25,6 +25,10 @@ export async function POST() {
       );
     `;
 
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_habit_logs_date ON habit_logs(log_date);
+    `;
+
     /* Seed data with Lucide icon keys instead of emojis */
     const existing = await sql`SELECT COUNT(*) AS c FROM habits`;
     if (Number(existing[0].c) === 0) {
@@ -39,16 +43,6 @@ export async function POST() {
           ('Evening Walk', 'footprints', '#38bdf8', 7),
           ('Reading',      'book-open',  '#818cf8', 8);
       `;
-    } else {
-      /* Update existing rows to use icon keys if they still have emojis */
-      await sql`UPDATE habits SET icon = 'sun'        WHERE name = 'Wake Up'`;
-      await sql`UPDATE habits SET icon = 'book'       WHERE name = 'Study'`;
-      await sql`UPDATE habits SET icon = 'droplet'    WHERE name = '2L Water'`;
-      await sql`UPDATE habits SET icon = 'sparkles'   WHERE name = 'Meditation'`;
-      await sql`UPDATE habits SET icon = 'dumbbell'   WHERE name = 'Exercise'`;
-      await sql`UPDATE habits SET icon = 'moon'       WHERE name = 'Night Study'`;
-      await sql`UPDATE habits SET icon = 'footprints' WHERE name = 'Evening Walk'`;
-      await sql`UPDATE habits SET icon = 'book-open'  WHERE name = 'Reading'`;
     }
 
     const habits = await sql`SELECT id, name FROM habits ORDER BY sort_order`;
