@@ -1,30 +1,22 @@
-import type { Metadata } from "next";
-import { Inter, Manrope } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
 
 const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const manrope = Manrope({
-  variable: "--font-manrope",
-  subsets: ["latin"],
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
-  title: "HabitFlow | Kinetic Sanctuary",
-  description: "A premium habit tracker built for performance and peace.",
+  title: 'HabitFlow — Daily Habit Tracker',
+  description: 'Track your daily habits, visualize consistency, and build lasting routines.',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${manrope.variable} bg-background text-on-surface font-body antialiased`} suppressHydrationWarning>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

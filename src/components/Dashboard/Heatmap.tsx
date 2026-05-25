@@ -1,146 +1,140 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DayLog } from '@/app/page';
-import { BouncingDots } from '@/components/ui/bouncing-dots';
 
-interface HeatmapProps { logs: DayLog[]; loading?: boolean }
-
-const DAYS = 60;
-
-function buildGrid(days: number) {
-  const cells: string[] = [];
-  const today = new Date();
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    cells.push(d.toISOString().slice(0, 10));
-  }
-  return cells;
+interface HeatmapProps {
+  logs: DayLog[];
+  loading?: boolean;
 }
 
-function getColor(pct: number) {
-  if (pct === 0)  return '#1e293b';         // slate-800 - empty
-  if (pct < 25)   return '#082f49';         // sky-950
-  if (pct < 50)   return '#075985';         // sky-800
-  if (pct < 75)   return '#0369a1';         // sky-700
-  return '#38bdf8';                          // sky-400 full
+function buildDates(count: number): string[] {
+  const today = new Date();
+  return Array.from({ length: count }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (count - 1 - i));
+    return d.toISOString().slice(0, 10);
+  });
+}
+
+function getIntensityColor(pct: number): string {
+  if (pct === 0)   return 'rgba(56,189,248,0.04)';
+  if (pct < 25)    return 'rgba(7,89,133,0.7)';
+  if (pct < 50)    return 'rgba(3,105,161,0.85)';
+  if (pct < 75)    return 'rgba(14,165,233,0.90)';
+  return '#38bdf8';
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 export default function Heatmap({ logs, loading = false }: HeatmapProps) {
-  const [hoveredCell, setHoveredCell] = useState<{ date: string, pct: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ date: string; pct: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setMounted(true);
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
-  const daysToShow = isMobile ? 35 : 60; // 5 weeks on mobile vs 60 days
-  const cols = isMobile ? 7 : 12;
+  const days = isMobile ? 28 : 56;
+  const cols = isMobile ? 7 : 8; // weeks view
+  const dates = buildDates(days);
   const logMap = new Map(logs.map(l => [l.date, Number(l.pct)]));
-  const cells  = buildGrid(daysToShow);
 
-  const container = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.01 }
-    }
-  };
-
-  const item = {
-    hidden: { scale: 0, opacity: 0 },
-    show: { scale: 1, opacity: 1 }
-  };
-
-  if (!mounted) return <div className="glass-panel p-6 h-[200px] animate-pulse bg-white/5 rounded-2xl" />;
+  if (!mounted) {
+    return <div className="card h-[160px] skeleton" />;
+  }
 
   return (
-    <div className="glass-panel p-5 sm:p-6 space-y-6 relative overflow-hidden">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <div className="card p-5 sm:p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Consistency Map</h2>
-          <p className="text-slate-400 text-xs sm:text-sm mt-1 font-medium italic opacity-80">Track your kinetic persistence</p>
+          <h2 className="text-sm font-semibold text-zinc-100">Activity</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">{isMobile ? 'Last 4 weeks' : 'Last 8 weeks'}</p>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-500 bg-white/5 px-3 py-1.5 rounded-full self-start sm:self-auto">
-          <span>Less</span>
-          {[0, 50, 100].map(v => (
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-zinc-600">Less</span>
+          {[0, 40, 70, 100].map(v => (
             <div
               key={v}
-              className="w-2.5 h-2.5 rounded-[2px]"
-              style={{ backgroundColor: getColor(v) }}
+              className="w-3 h-3 rounded-sm"
+              style={{ backgroundColor: getIntensityColor(v) }}
             />
           ))}
-          <span>More</span>
+          <span className="text-[10px] text-zinc-600">More</span>
         </div>
       </div>
 
-      {/* Responsive Wrapper with Horizontal Scroll on Mobile */}
-      <div className="overflow-x-auto pb-2 -mx-2 px-2 hide-scrollbar">
-        {loading ? (
-          <div className="py-12 flex flex-col items-center justify-center">
-            <BouncingDots 
-              message="Syncing Persistence Map" 
-              className="bg-sky-400"
-            />
-          </div>
-        ) : (
-          <motion.div 
-            variants={container}
+      {/* Grid */}
+      {loading ? (
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+          {Array.from({ length: days }).map((_, i) => (
+            <div key={i} className="aspect-square rounded-sm skeleton" />
+          ))}
+        </div>
+      ) : (
+        <div className="relative">
+          <motion.div
             initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            className="grid gap-1.5 sm:gap-2 relative min-w-full sm:min-w-0" 
+            animate="show"
+            variants={{ show: { transition: { staggerChildren: 0.008 } } }}
+            className="grid gap-1"
             style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
           >
-            {cells.map((date, idx) => {
+            {dates.map(date => {
               const pct = logMap.get(date) ?? 0;
               return (
                 <motion.div
                   key={date}
-                  variants={item}
-                  onMouseEnter={() => setHoveredCell({ date, pct })}
-                  onMouseLeave={() => setHoveredCell(null)}
-                  className="aspect-square rounded-[3px] sm:rounded-md transition-all cursor-crosshair relative border border-white/5"
-                  style={{ 
-                    backgroundColor: getColor(pct),
-                    boxShadow: pct > 75 ? '0 0 10px rgba(56, 189, 248, 0.15)' : 'none'
+                  variants={{
+                    hidden: { opacity: 0, scale: 0.6 },
+                    show:   { opacity: 1, scale: 1, transition: { duration: 0.15 } },
                   }}
-                  whileHover={{ scale: 1.15, zIndex: 10 }}
+                  className="aspect-square rounded-sm cursor-pointer transition-transform duration-100 hover:scale-110"
+                  style={{ backgroundColor: getIntensityColor(pct) }}
+                  onMouseEnter={() => setTooltip({ date, pct })}
+                  onMouseLeave={() => setTooltip(null)}
                 />
               );
             })}
-
-            {/* Floating Tooltip */}
-            <AnimatePresence>
-              {hoveredCell && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 5, scale: 0.95 }}
-                  className="fixed bottom-10 left-1/2 -translate-x-1/2 pointer-events-none z-50 px-4 py-2.5 rounded-xl bg-slate-900/90 border border-white/10 shadow-2xl backdrop-blur-2xl"
-                >
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    {new Date(hoveredCell.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </div>
-                  <div className="text-sm font-black text-white flex items-center gap-2 mt-0.5">
-                    <div className="w-2 h-2 rounded-full bg-sky-400" />
-                    {hoveredCell.pct}% Optimized
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </motion.div>
-        )}
-      </div>
+
+          {/* Tooltip */}
+          <AnimatePresence>
+            {tooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.12 }}
+                className="fixed z-50 pointer-events-none"
+                style={{ bottom: 80, left: '50%', transform: 'translateX(-50%)' }}
+              >
+                <div className="glass rounded-lg px-3 py-2 text-center shadow-xl">
+                  <p className="text-[11px] text-zinc-400 font-medium">{formatDate(tooltip.date)}</p>
+                  <p className="text-sm font-semibold text-zinc-100 mt-0.5">
+                    {tooltip.pct === 0 ? 'No activity' : `${tooltip.pct}% complete`}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
