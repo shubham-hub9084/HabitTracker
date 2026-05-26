@@ -61,13 +61,15 @@ function StatPill({
   value,
   label,
   icon,
+  dataTestId,
 }: {
   value: string | number;
   label: string;
   icon: React.ReactNode;
+  dataTestId?: string;
 }) {
   return (
-    <div className="card flex-1 flex flex-col items-center justify-center gap-1 py-4 text-center min-w-0">
+    <div data-testid={dataTestId} className="card flex-1 flex flex-col items-center justify-center gap-1 py-4 text-center min-w-0">
       <div className="text-zinc-500 mb-0.5">{icon}</div>
       <p className="text-xl font-bold text-zinc-100 tabular-nums">{value}</p>
       <p className="text-[11px] text-zinc-500 font-medium">{label}</p>
@@ -237,6 +239,7 @@ export default function Dashboard() {
           <StatPill
             value={loading ? '—' : `${completedCount}/${totalCount}`}
             label="Completed"
+            dataTestId="stat-pill-completed"
             icon={
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.25" />
@@ -247,6 +250,7 @@ export default function Dashboard() {
           <StatPill
             value={loading ? '—' : `${completionPct}%`}
             label="Progress"
+            dataTestId="stat-pill-progress"
             icon={
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
@@ -256,6 +260,7 @@ export default function Dashboard() {
           <StatPill
             value={loading ? '—' : streak}
             label={streak === 1 ? 'Day streak' : 'Day streak'}
+            dataTestId="stat-pill-streak"
             icon={<Flame size={13} className={streak > 0 ? 'text-amber-500' : 'text-zinc-600'} />}
           />
         </motion.div>
@@ -288,6 +293,8 @@ export default function Dashboard() {
               <div className="relative group">
                 <input
                   type="date"
+                  id="date-picker-input"
+                  data-testid="date-picker-input"
                   value={dateISO}
                   max={toISO(new Date())}
                   onChange={e => {

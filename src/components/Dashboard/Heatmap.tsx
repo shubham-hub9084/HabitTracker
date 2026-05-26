@@ -35,20 +35,33 @@ function formatDate(iso: string): string {
 }
 
 export default function Heatmap({ logs, loading = false }: HeatmapProps) {
+  const [range, setRange] = useState<28 | 56 | 120>(56);
   const [tooltip, setTooltip] = useState<{ date: string; pct: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const check = () => setIsMobile(window.innerWidth < 640);
+    const check = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (mobile) setRange(28);
+    };
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const days = isMobile ? 28 : 56;
-  const cols = isMobile ? 7 : 8; // weeks view
+  const days = range;
+  let cols = 8;
+  if (range === 28) {
+    cols = 7;
+  } else if (range === 56) {
+    cols = 8;
+  } else if (range === 120) {
+    cols = 15;
+  }
+
   const dates = buildDates(days);
   const logMap = new Map(logs.map(l => [l.date, Number(l.pct)]));
 
@@ -57,16 +70,38 @@ export default function Heatmap({ logs, loading = false }: HeatmapProps) {
   }
 
   return (
-    <div className="card p-5 sm:p-6">
+    <div className="card p-5 sm:p-6" data-testid="activity-heatmap">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-100">Activity</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">{isMobile ? 'Last 4 weeks' : 'Last 8 weeks'}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div className="flex items-center justify-between sm:justify-start gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-100">Activity</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {range === 28 ? 'Last 4 weeks' : range === 56 ? 'Last 8 weeks' : 'Last 120 days'}
+            </p>
+          </div>
+
+          {/* Range Selector */}
+          <div className="flex bg-zinc-950/60 p-0.5 rounded-lg border border-[rgba(56,189,248,0.1)] select-none">
+            {([28, 56, 120] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                data-testid={`heatmap-range-${r}`}
+                className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-all duration-150 ${
+                  range === r
+                    ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                {r === 120 ? '120D' : `${r}D`}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 self-end sm:self-auto">
           <span className="text-[10px] text-zinc-600">Less</span>
           {[0, 40, 70, 100].map(v => (
             <div
@@ -100,6 +135,8 @@ export default function Heatmap({ logs, loading = false }: HeatmapProps) {
               return (
                 <motion.div
                   key={date}
+                  data-testid="heatmap-cell"
+                  aria-label={`${pct}% complete on ${date}`}
                   variants={{
                     hidden: { opacity: 0, scale: 0.6 },
                     show:   { opacity: 1, scale: 1, transition: { duration: 0.15 } },

@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node db-setup.js",
     "dev": "next dev",
     "build": "next build",
+    "prestart": "node db-setup.js",
     "start": "next start",
     "lint": "eslint"
   },

@@ -34,33 +34,61 @@ function buildBars(logs: DayLog[], days: number): BarData[] {
 }
 
 export default function PerformanceTrend({ logs, loading = false }: PerformanceTrendProps) {
+  const [range, setRange] = useState<7 | 14 | 30 | 120>(14);
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
-    const check = () => setIsMobile(window.innerWidth < 640);
+    const check = () => {
+      const mobile = window.innerWidth < 640;
+      setIsMobile(mobile);
+      if (mobile) setRange(7);
+    };
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const days = isMobile ? 7 : 14;
+  const days = range;
   const bars = buildBars(logs, days);
   const todayPct = bars.at(-1)?.pct ?? 0;
 
   if (!mounted) return <div className="card h-[200px] skeleton" />;
 
   return (
-    <div className="card p-5 sm:p-6">
+    <div className="card p-5 sm:p-6" data-testid="performance-chart">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h2 className="text-sm font-semibold text-zinc-100">Performance</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">{isMobile ? 'Last 7 days' : 'Last 14 days'}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+        <div className="flex items-center justify-between sm:justify-start gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-100">Performance</h2>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              {range === 7 ? 'Last 7 days' : range === 14 ? 'Last 14 days' : range === 30 ? 'Last 30 days' : 'Last 120 days'}
+            </p>
+          </div>
+
+          {/* Range Selector */}
+          <div className="flex bg-zinc-950/60 p-0.5 rounded-lg border border-[rgba(56,189,248,0.1)] select-none">
+            {([7, 14, 30, 120] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => setRange(r)}
+                data-testid={`trend-range-${r}`}
+                className={`px-2 py-1 text-[10px] font-semibold rounded-md transition-all duration-150 ${
+                  range === r
+                    ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30'
+                    : 'text-zinc-500 hover:text-zinc-300 border border-transparent'
+                }`}
+              >
+                {r === 120 ? '120D' : `${r}D`}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="text-right">
+
+        <div className="text-right self-end sm:self-auto">
           <p className="text-xl font-bold text-zinc-100">{todayPct}%</p>
           <p className="text-[11px] text-zinc-500">today</p>
         </div>
@@ -97,6 +125,8 @@ export default function PerformanceTrend({ logs, loading = false }: PerformanceT
                   {/* Bar container */}
                   <div className="w-full flex items-end h-24 relative">
                     <motion.div
+                      data-testid="performance-bar"
+                      aria-label={`${bar.pct}% completed on ${bar.date}`}
                       initial={{ height: 0 }}
                       animate={{ height: `${height}%` }}
                       transition={{ type: 'spring', stiffness: 140, damping: 18, delay: i * 0.03 }}

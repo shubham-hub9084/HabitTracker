@@ -33,6 +33,8 @@ export default function HabitCard({ title, completed, icon, color }: HabitCardPr
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
+      data-testid="habit-card"
+      data-habit-name={title}
       className={`
         group flex items-center gap-4 px-4 py-3.5 rounded-xl border cursor-pointer
         transition-all duration-200 select-none backdrop-blur-sm
